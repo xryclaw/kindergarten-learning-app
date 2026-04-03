@@ -127,7 +127,8 @@ const characters = ref([
   { id: 9, char: '北', pinyin: 'běi', meaning: '北方', flipped: false }
 ])
 
-const writingChars = ['可', '叶', '东', '西']
+const writingChars = ref(['可', '叶', '东', '西'])
+const currentTopic = ref(null)
 const showAnimation = ref(false)
 const currentChar = ref('')
 const animationStyle = ref({})
@@ -147,19 +148,38 @@ const progress = ref({
   wrongAnswers: []
 })
 
-onMounted(() => {
+onMounted(async () => {
   const saved = localStorage.getItem('character-learning-progress')
   if (saved) progress.value = JSON.parse(saved)
+
+  try {
+    const result = await api.get('/content/topics?category=character&isActive=true&limit=1')
+    if (result.success && result.data.topics.length > 0) {
+      const topic = result.data.topics[0]
+      currentTopic.value = topic
+      if (topic.content) {
+        if (topic.content.characters) {
+          characters.value = topic.content.characters.map(c => ({ ...c, flipped: false }))
+        }
+        if (topic.content.writingChars) {
+          writingChars.value = topic.content.writingChars
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load character topics:', err)
+  }
 })
 
 const saveProgress = async () => {
   if (!authStore.currentStudent) return
   await api.post('/learning/records', {
-    student_id: authStore.currentStudent.id,
-    topic_type: 'character',
-    topic_id: 'jiangnan',
+    studentId: authStore.currentStudent.id,
+    topicId: currentTopic.value ? currentTopic.value.id : 1,
+    activityType: 'quiz',
     score: score.value,
-    duration: 0
+    durationSeconds: 0,
+    completed: true
   })
 }
 
@@ -228,11 +248,11 @@ const endQuiz = async () => {
 
   for (const mistake of wrongAnswers.value) {
     await api.post('/learning/mistakes', {
-      student_id: authStore.currentStudent.id,
-      topic_type: 'character',
-      question: mistake.question,
-      correct_answer: mistake.correct,
-      user_answer: mistake.wrong
+      studentId: authStore.currentStudent.id,
+      topicId: currentTopic.value ? currentTopic.value.id : 1,
+      questionId: String(mistake.question),
+      wrongAnswer: mistake.wrong,
+      correctAnswer: mistake.correct
     })
   }
 

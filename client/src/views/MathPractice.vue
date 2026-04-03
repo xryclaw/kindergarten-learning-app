@@ -73,6 +73,7 @@ const userAnswer = ref('')
 const feedback = ref(null)
 const score = ref(0)
 const wrongCount = ref(0)
+const currentTopic = ref(null)
 
 const progress = ref({
   completed: [],
@@ -80,19 +81,33 @@ const progress = ref({
   wrongAnswers: []
 })
 
-onMounted(() => {
+onMounted(async () => {
   const saved = localStorage.getItem('math-practice-progress')
   if (saved) progress.value = JSON.parse(saved)
+
+  try {
+    const result = await api.get('/content/topics?category=math&isActive=true&limit=1')
+    if (result.success && result.data.topics.length > 0) {
+      const topic = result.data.topics[0]
+      currentTopic.value = topic
+      if (topic.content && topic.content.problems) {
+        problems.value = topic.content.problems.map(p => ({ ...p, keywords: p.keywords || [] }))
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load math topics:', err)
+  }
 })
 
 const saveProgress = async () => {
   if (!authStore.currentStudent) return
   await api.post('/learning/records', {
-    student_id: authStore.currentStudent.id,
-    topic_type: 'math',
-    topic_id: 'word_problems',
-    score: score.value,
-    duration: 0
+    studentId: authStore.currentStudent.id,
+    topicId: currentTopic.value ? currentTopic.value.id : 1,
+    activityType: 'quiz',
+    score: Math.round((score.value / problems.value.length) * 100),
+    durationSeconds: 0,
+    completed: currentIndex.value >= problems.value.length - 1
   })
 }
 
@@ -125,11 +140,11 @@ const checkAnswer = async () => {
     wrongCount.value++
     feedback.value = { correct: false, message: `❌ 答案是 ${currentProblem.value.answer}` }
     await api.post('/learning/mistakes', {
-      student_id: authStore.currentStudent.id,
-      topic_type: 'math',
-      question: currentProblem.value.text,
-      correct_answer: String(currentProblem.value.answer),
-      user_answer: String(userAnswer.value)
+      studentId: authStore.currentStudent.id,
+      topicId: currentTopic.value ? currentTopic.value.id : 1,
+      questionId: String(currentProblem.value.id),
+      wrongAnswer: String(userAnswer.value),
+      correctAnswer: String(currentProblem.value.answer)
     })
   }
 
