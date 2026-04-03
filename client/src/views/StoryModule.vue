@@ -86,6 +86,7 @@ const showQuiz = ref(false)
 const currentQuestionIndex = ref(0)
 const quizFeedback = ref(null)
 const score = ref(0)
+const storyTopics = ref([])
 
 const progress = ref({
   completed: [],
@@ -93,9 +94,28 @@ const progress = ref({
   wrongAnswers: []
 })
 
-onMounted(() => {
+onMounted(async () => {
   const saved = localStorage.getItem('story-module-progress')
   if (saved) progress.value = JSON.parse(saved)
+
+  try {
+    const result = await api.get('/content/topics?category=story&isActive=true&limit=100')
+    if (result.success && result.data.topics.length > 0) {
+      storyTopics.value = result.data.topics
+      const loadedStories = result.data.topics.map((topic, idx) => ({
+        id: topic.id,
+        title: topic.title,
+        content: topic.content?.content || [],
+        questions: topic.content?.questions || []
+      }))
+      if (loadedStories.length > 0) {
+        stories.value = loadedStories
+        currentStory.value = stories.value[0]
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load story topics:', err)
+  }
 })
 
 const saveProgress = () => {
@@ -126,11 +146,11 @@ const answerQuestion = async (option) => {
   } else {
     quizFeedback.value = { correct: false, message: `❌ 正确答案是：${currentQuestion.value.answer}` }
     await api.post('/learning/mistakes', {
-      student_id: authStore.currentStudent.id,
-      topic_type: 'story',
-      question: currentQuestion.value.question,
-      correct_answer: currentQuestion.value.answer,
-      user_answer: option
+      studentId: authStore.currentStudent.id,
+      topicId: currentStory.value.id,
+      questionId: String(currentQuestionIndex.value + 1),
+      wrongAnswer: option,
+      correctAnswer: currentQuestion.value.answer
     })
   }
 
@@ -144,11 +164,12 @@ const answerQuestion = async (option) => {
         progress.value.completed.push(currentStory.value.id)
       }
       await api.post('/learning/records', {
-        student_id: authStore.currentStudent.id,
-        topic_type: 'story',
-        topic_id: String(currentStory.value.id),
-        score: score.value,
-        duration: 0
+        studentId: authStore.currentStudent.id,
+        topicId: currentStory.value.id,
+        activityType: 'quiz',
+        score: Math.round((score.value / currentStory.value.questions.length) * 100),
+        durationSeconds: 0,
+        completed: true
       })
     }
   }, 1500)

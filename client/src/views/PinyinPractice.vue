@@ -86,16 +86,17 @@ import { api } from '../utils/api'
 
 const authStore = useAuthStore()
 
-const wholePinyin = [
+const wholePinyin = ref([
   { pinyin: 'ye', example: '叶子', tones: ['yē', 'yé', 'yě', 'yè'] },
   { pinyin: 'yue', example: '月亮', tones: ['yuē', 'yué', 'yuě', 'yuè'] },
   { pinyin: 'yi', example: '一', tones: ['yī', 'yí', 'yǐ', 'yì'] },
   { pinyin: 'wu', example: '五', tones: ['wū', 'wú', 'wǔ', 'wù'] },
   { pinyin: 'yu', example: '鱼', tones: ['yū', 'yú', 'yǔ', 'yù'] }
-]
+])
 
-const compoundFinals = ['üe', 'ie', 'üan', 'ün', 'ing', 'ong', 'eng', 'ang']
+const compoundFinals = ref(['üe', 'ie', 'üan', 'ün', 'ing', 'ong', 'eng', 'ang'])
 const selectedPinyin = ref('')
+const currentTopic = ref(null)
 
 const selectPinyin = (item) => {
   selectedPinyin.value = selectedPinyin.value === item.pinyin ? '' : item.pinyin
@@ -127,19 +128,35 @@ const progress = ref({
   wrongAnswers: []
 })
 
-onMounted(() => {
+onMounted(async () => {
   const saved = localStorage.getItem('pinyin-practice-progress')
   if (saved) progress.value = JSON.parse(saved)
+
+  try {
+    const result = await api.get('/content/topics?category=pinyin&isActive=true&limit=1')
+    if (result.success && result.data.topics.length > 0) {
+      const topic = result.data.topics[0]
+      currentTopic.value = topic
+      if (topic.content) {
+        if (topic.content.wholePinyin) wholePinyin.value = topic.content.wholePinyin
+        if (topic.content.compoundFinals) compoundFinals.value = topic.content.compoundFinals
+        if (topic.content.gameItems) gameItems.value = topic.content.gameItems
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load pinyin topics:', err)
+  }
 })
 
 const saveProgress = async () => {
   if (!authStore.currentStudent) return
   await api.post('/learning/records', {
-    student_id: authStore.currentStudent.id,
-    topic_type: 'pinyin',
-    topic_id: 'matching',
+    studentId: authStore.currentStudent.id,
+    topicId: currentTopic.value ? currentTopic.value.id : 1,
+    activityType: 'game',
     score: gameItems.value.length,
-    duration: 0
+    durationSeconds: 0,
+    completed: true
   })
 }
 
@@ -173,11 +190,11 @@ const checkMatch = async () => {
         await saveProgress()
         for (const mistake of wrongMatches.value) {
           await api.post('/learning/mistakes', {
-            student_id: authStore.currentStudent.id,
-            topic_type: 'pinyin',
-            question: mistake.pinyin,
-            correct_answer: mistake.correctChar,
-            user_answer: mistake.wrongChar
+            studentId: authStore.currentStudent.id,
+            topicId: currentTopic.value ? currentTopic.value.id : 1,
+            questionId: String(mistake.pinyin),
+            wrongAnswer: mistake.wrongChar,
+            correctAnswer: mistake.correctChar
           })
         }
       }
