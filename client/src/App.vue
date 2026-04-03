@@ -19,8 +19,14 @@
     <main class="main-content">
       <CharacterLearning v-if="currentTab === 'characters'" />
       <PinyinPractice v-if="currentTab === 'pinyin'" />
+      <MathPractice v-if="currentTab === 'math'" />
+      <StoryModule v-if="currentTab === 'story'" />
+      <ScratchModule v-if="currentTab === 'scratch'" />
       <InteractiveQuiz v-if="currentTab === 'quiz'" />
       <LearningCards v-if="currentTab === 'cards'" />
+      <GamificationView v-if="currentTab === 'gamification'" />
+      <ReviewSystem v-if="currentTab === 'review'" />
+      <AdminPanel v-if="currentTab === 'admin'" />
     </main>
     
     <footer class="footer">
@@ -36,14 +42,26 @@ import CharacterLearning from './views/CharacterLearning.vue'
 import PinyinPractice from './views/PinyinPractice.vue'
 import InteractiveQuiz from './views/InteractiveQuiz.vue'
 import LearningCards from './views/LearningCards.vue'
+import MathPractice from './views/MathPractice.vue'
+import StoryModule from './views/StoryModule.vue'
+import ScratchModule from './views/ScratchModule.vue'
+import GamificationView from './views/GamificationView.vue'
+import ReviewSystem from './views/ReviewSystem.vue'
+import AdminPanel from './views/AdminPanel.vue'
 
 const currentTab = ref('characters')
 
 const tabs = [
   { id: 'characters', name: '汉字学习', icon: '✍️' },
   { id: 'pinyin', name: '拼音练习', icon: '🔤' },
+  { id: 'math', name: '数学练习', icon: '🔢' },
+  { id: 'story', name: '故事阅读', icon: '📖' },
+  { id: 'scratch', name: 'Scratch编程', icon: '🎨' },
   { id: 'quiz', name: '互动测验', icon: '🎯' },
-  { id: 'cards', name: '学习卡片', icon: '🎴' }
+  { id: 'cards', name: '学习卡片', icon: '🎴' },
+  { id: 'gamification', name: '学习成就', icon: '🏆' },
+  { id: 'review', name: '错题复习', icon: '📝' },
+  { id: 'admin', name: '内容管理', icon: '⚙️' }
 ]
 
 const buildVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'

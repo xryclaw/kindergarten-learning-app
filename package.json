@@ -3,15 +3,20 @@
   "version": "1.0.0",
   "description": "幼儿园综合学习互动应用",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "npm run client:dev",
+    "build": "npm run client:build",
+    "preview": "cd client && vite preview",
     "test": "node --test",
+    "client:dev": "cd client && vite",
+    "client:build": "cd client && vite build",
+    "server:dev": "cd server && npm run dev",
+    "server:install": "cd server && npm install",
     "deploy": "node ./scripts/deploy.mjs",
     "server:bootstrap": "bash ./scripts/bootstrap-server.sh",
     "server:https": "bash ./scripts/enable-https.sh"
   },
   "dependencies": {
+    "pinia": "^3.0.4",
     "vue": "^3.4.0",
     "vue-router": "^4.2.0"
   },

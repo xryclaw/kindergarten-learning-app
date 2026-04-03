@@ -13,7 +13,8 @@ import {
 } from './deploy-lib.mjs'
 
 const projectRoot = path.resolve(import.meta.dirname, '..')
-const distDir = path.join(projectRoot, 'dist')
+const clientDistDir = path.join(projectRoot, 'client', 'dist')
+const serverDir = path.join(projectRoot, 'server')
 
 function parseArgs(argv) {
   const parsed = {
@@ -98,8 +99,8 @@ function remoteShellCommand(config, remoteCommand) {
 }
 
 function ensureDistExists() {
-  if (!fs.existsSync(distDir)) {
-    throw new Error('dist/ does not exist. Run npm run build first or omit --skip-build.')
+  if (!fs.existsSync(clientDistDir)) {
+    throw new Error('client/dist/ does not exist. Run npm run build first or omit --skip-build.')
   }
 }
 
@@ -130,15 +131,36 @@ function main() {
   console.log(`Deploy target: ${config.user}@${config.host}:${config.remoteRoot}`)
   console.log(`Release: ${releaseName}`)
 
-  run('ssh', remoteShellCommand(config, `mkdir -p '${remoteReleasePath}' '${config.releasesDir}'`))
+  // Create release directories
+  run('ssh', remoteShellCommand(config, `mkdir -p '${remoteReleasePath}/client' '${remoteReleasePath}/server' '${config.releasesDir}' '${config.remoteRoot}/data'`))
+
+  // Deploy frontend
+  console.log('Deploying frontend...')
   run('rsync', [
     '-az',
     '--delete',
     '-e',
     `ssh -p ${config.port} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -i ${config.identityFile}`,
-    `${distDir}/`,
-    rsyncDestination,
+    `${clientDistDir}/`,
+    `${rsyncDestination}/client/dist/`,
   ])
+
+  // Deploy backend
+  console.log('Deploying backend...')
+  run('rsync', [
+    '-az',
+    '--delete',
+    '--exclude=node_modules',
+    '--exclude=*.log',
+    '-e',
+    `ssh -p ${config.port} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -i ${config.identityFile}`,
+    `${serverDir}/`,
+    `${rsyncDestination}/server/`,
+  ])
+
+  // Install backend dependencies on server
+  console.log('Installing backend dependencies...')
+  run('ssh', remoteShellCommand(config, `cd '${remoteReleasePath}/server' && npm install --production`))
 
   const fixPermissionsCommand = `
 set -euo pipefail
@@ -152,6 +174,38 @@ find '${remoteReleasePath}' -type f -exec chmod 644 {} +
   const activateCommand = `
 set -euo pipefail
 ln -sfn '${remoteReleasePath}' '${config.currentSymlink}'
+
+# Setup systemd service if not exists
+if [ ! -f /etc/systemd/system/kindergarten-app.service ]; then
+  echo "Setting up systemd service..."
+  sudo tee /etc/systemd/system/kindergarten-app.service > /dev/null << 'EOF'
+[Unit]
+Description=Kindergarten Learning App
+After=network.target
+
+[Service]
+Type=simple
+User=${config.user}
+WorkingDirectory=${config.remoteRoot}/current
+Environment=NODE_ENV=production
+Environment=DB_PATH=${config.remoteRoot}/data/app.db
+Environment=JWT_SECRET=${config.jwtSecret || 'change-this-secret'}
+Environment=PORT=3000
+ExecStart=/usr/bin/node server/index.js
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  sudo systemctl daemon-reload
+  sudo systemctl enable kindergarten-app
+fi
+
+# Restart service
+sudo systemctl restart kindergarten-app
+
+# Cleanup old releases
 if [ -d '${config.releasesDir}' ]; then
   find '${config.releasesDir}' -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -r | tail -n +${retentionStart} | while read -r old_release; do
     [ -n "$old_release" ] && rm -rf '${config.releasesDir}/'"$old_release"

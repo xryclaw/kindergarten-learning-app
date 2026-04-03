@@ -1,0 +1,18 @@
+[Unit]
+Description=Kindergarten Learning App
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/kindergarten-learning-app/current
+Environment=NODE_ENV=production
+Environment=DB_PATH=/var/www/kindergarten-learning-app/data/app.db
+Environment=JWT_SECRET=__JWT_SECRET__
+Environment=PORT=3000
+ExecStart=/usr/bin/node server/index.js
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
