@@ -126,11 +126,11 @@ const answerQuestion = async (option) => {
   } else {
     quizFeedback.value = { correct: false, message: `❌ 正确答案是：${currentQuestion.value.answer}` }
     await api.post('/learning/mistakes', {
-      student_id: authStore.currentStudent.id,
-      topic_type: 'story',
-      question: currentQuestion.value.question,
-      correct_answer: currentQuestion.value.answer,
-      user_answer: option
+      studentId: authStore.currentStudent.id,
+      topicId: currentStory.value.id,
+      questionId: currentQuestion.value.question,
+      correctAnswer: currentQuestion.value.answer,
+      wrongAnswer: option
     })
   }
 
@@ -144,11 +144,12 @@ const answerQuestion = async (option) => {
         progress.value.completed.push(currentStory.value.id)
       }
       await api.post('/learning/records', {
-        student_id: authStore.currentStudent.id,
-        topic_type: 'story',
-        topic_id: String(currentStory.value.id),
+        studentId: authStore.currentStudent.id,
+        topicId: currentStory.value.id,
+        activityType: 'quiz',
         score: score.value,
-        duration: 0
+        durationSeconds: 0,
+        completed: true
       })
     }
   }, 1500)

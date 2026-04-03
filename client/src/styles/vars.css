@@ -1,0 +1,68 @@
+:root {
+  /* 背景色 */
+  --bg-primary: #F8F6F0;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F0EDE5;
+
+  /* 主题色 */
+  --theme-primary: #7CB69D;
+  --theme-secondary: #F5C26B;
+  --theme-accent: #E8A87C;
+
+  /* 状态色 */
+  --state-success: #8BC48A;
+  --state-error: #E88B8B;
+  --state-warning: #F5D67B;
+
+  /* 文字色 */
+  --text-primary: #3D3D3D;
+  --text-secondary: #6B6B6B;
+  --text-tertiary: #999999;
+  --text-white: #FFFFFF;
+
+  /* 边框与分割线 */
+  --border-light: #E8E4DC;
+  --border-medium: #D4CFC4;
+
+  /* 标题层级 */
+  --text-hero: 2.5rem;
+  --text-h1: 2rem;
+  --text-h2: 1.6rem;
+  --text-h3: 1.4rem;
+
+  /* 正文层级 */
+  --text-body: 1.25rem;
+  --text-body-sm: 1.1rem;
+  --text-caption: 1rem;
+
+  /* 特殊用途 */
+  --text-display: 4rem;
+  --text-icon: 3rem;
+
+  /* 行高 */
+  --leading-tight: 1.3;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.8;
+
+  /* 间距 */
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-5: 2.5rem;
+  --space-6: 3rem;
+
+  /* 按钮尺寸 */
+  --btn-height-lg: 64px;
+  --btn-height-md: 56px;
+  --btn-height-sm: 48px;
+
+  /* 热区 */
+  --touch-min: 60px;
+  --touch-comfort: 80px;
+
+  /* 动画时长 */
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+}

@@ -116,11 +116,12 @@ const completeLesson = async () => {
   if (!progress.value.completed.includes(currentLesson.value.id)) {
     progress.value.completed.push(currentLesson.value.id)
     await api.post('/learning/records', {
-      student_id: authStore.currentStudent.id,
-      topic_type: 'scratch',
-      topic_id: String(currentLesson.value.id),
+      studentId: authStore.currentStudent.id,
+      topicId: currentLesson.value.id,
+      activityType: 'practice',
       score: 1,
-      duration: 0
+      durationSeconds: 0,
+      completed: true
     })
   }
   currentLesson.value = null

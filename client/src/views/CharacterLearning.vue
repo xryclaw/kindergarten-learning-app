@@ -1,6 +1,8 @@
 <template>
   <div class="character-learning">
-    <h2>✍️ 汉字学习 - 《江南》</h2>
+    <h2>✍️ 汉字学习 - {{ storyTitle }}</h2>
+
+    <div v-if="loading" class="status-msg">⏳ 正在加载学习内容...</div>
 
     <div class="progress-bar">
       <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
@@ -36,15 +38,9 @@
     <div v-else class="story-section">
       <h3>📖 今日故事</h3>
       <div class="story-card">
-        <h4>《江南》</h4>
+        <h4>{{ storyTitle }}</h4>
         <p class="poem">
-n          江南可采莲，<br>
-          莲叶何田田。<br>
-          鱼戏莲叶间。<br>
-          鱼戏莲叶东，<br>
-          鱼戏莲叶西，<br>
-          鱼戏莲叶南，<br>
-          鱼戏莲叶北。
+          <span v-for="(line, idx) in storyPoem" :key="idx">{{ line }}<br></span>
         </p>
       </div>
     </div>
@@ -115,7 +111,21 @@ import { api } from '../utils/api'
 
 const authStore = useAuthStore()
 
-const characters = ref([
+const characters = ref([])
+const writingChars = ref([])
+const storyTitle = ref('《江南》')
+const storyPoem = ref([
+  '江南可采莲，',
+  '莲叶何田田。',
+  '鱼戏莲叶间。',
+  '鱼戏莲叶东，',
+  '鱼戏莲叶西，',
+  '鱼戏莲叶南，',
+  '鱼戏莲叶北。'
+])
+const loading = ref(false)
+
+const defaultCharacters = [
   { id: 1, char: '江', pinyin: 'jiāng', meaning: '大河', flipped: false },
   { id: 2, char: '南', pinyin: 'nán', meaning: '南方', flipped: false },
   { id: 3, char: '可', pinyin: 'kě', meaning: '可以', flipped: false },
@@ -125,9 +135,56 @@ const characters = ref([
   { id: 7, char: '间', pinyin: 'jiān', meaning: '中间', flipped: false },
   { id: 8, char: '东', pinyin: 'dōng', meaning: '东方', flipped: false },
   { id: 9, char: '北', pinyin: 'běi', meaning: '北方', flipped: false }
-])
+]
+const defaultWritingChars = ['可', '叶', '东', '西']
 
-const writingChars = ['可', '叶', '东', '西']
+const loadContent = async () => {
+  loading.value = true
+  try {
+    const res = await api.get('/content/topics?category=character&limit=1')
+    const topics = res.data?.topics || []
+    if (topics.length > 0) {
+      const topic = topics[0]
+      currentTopicId.value = topic.id
+      const content = topic.content || {}
+      if (Array.isArray(content.characters) && content.characters.length > 0) {
+        characters.value = content.characters.map((c, idx) => ({
+          id: c.id ?? idx + 1,
+          char: c.char || c.character || '',
+          pinyin: c.pinyin || '',
+          meaning: c.meaning || '',
+          flipped: false
+        }))
+      } else {
+        characters.value = [...defaultCharacters]
+      }
+      if (Array.isArray(content.writingChars) && content.writingChars.length > 0) {
+        writingChars.value = content.writingChars
+      } else if (Array.isArray(content.writing) && content.writing.length > 0) {
+        writingChars.value = content.writing.map(w => w.char || w.character || w)
+      } else {
+        writingChars.value = [...defaultWritingChars]
+      }
+      if (content.story) {
+        storyTitle.value = content.story.title || storyTitle.value
+        if (Array.isArray(content.story.poem)) storyPoem.value = content.story.poem
+        else if (typeof content.story.poem === 'string') storyPoem.value = content.story.poem.split('\n')
+      }
+    } else {
+      fallbackContent()
+    }
+  } catch (err) {
+    console.error('加载汉字内容失败', err)
+    fallbackContent()
+  } finally {
+    loading.value = false
+  }
+}
+
+const fallbackContent = () => {
+  characters.value = [...defaultCharacters]
+  writingChars.value = [...defaultWritingChars]
+}
 const showAnimation = ref(false)
 const currentChar = ref('')
 const animationStyle = ref({})
@@ -150,16 +207,20 @@ const progress = ref({
 onMounted(() => {
   const saved = localStorage.getItem('character-learning-progress')
   if (saved) progress.value = JSON.parse(saved)
+  loadContent()
 })
+
+const currentTopicId = ref(1)
 
 const saveProgress = async () => {
   if (!authStore.currentStudent) return
   await api.post('/learning/records', {
-    student_id: authStore.currentStudent.id,
-    topic_type: 'character',
-    topic_id: 'jiangnan',
+    studentId: authStore.currentStudent.id,
+    topicId: currentTopicId.value,
+    activityType: 'practice',
     score: score.value,
-    duration: 0
+    durationSeconds: 0,
+    completed: true
   })
 }
 
@@ -171,6 +232,8 @@ const flipCard = (char) => {
 }
 
 const getPinyin = (char) => {
+  const found = characters.value.find(c => c.char === char)
+  if (found) return found.pinyin
   const map = { '可': 'kě', '叶': 'yè', '东': 'dōng', '西': 'xī' }
   return map[char] || ''
 }
@@ -228,11 +291,11 @@ const endQuiz = async () => {
 
   for (const mistake of wrongAnswers.value) {
     await api.post('/learning/mistakes', {
-      student_id: authStore.currentStudent.id,
-      topic_type: 'character',
-      question: mistake.question,
-      correct_answer: mistake.correct,
-      user_answer: mistake.wrong
+      studentId: authStore.currentStudent.id,
+      topicId: currentTopicId.value,
+      questionId: mistake.question,
+      correctAnswer: mistake.correct,
+      wrongAnswer: mistake.wrong
     })
   }
 
@@ -583,5 +646,12 @@ button {
 
 button:hover {
   background: #764ba2;
+}
+
+.status-msg {
+  text-align: center;
+  padding: 20px;
+  font-size: 1.2rem;
+  color: var(--text-secondary);
 }
 </style>

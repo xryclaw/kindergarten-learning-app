@@ -1,8 +1,11 @@
 <template>
   <div class="pinyin-practice">
     <h2>🔤 拼音练习</h2>
-    
-    <div class="section">
+
+    <div v-if="loading" class="status-msg">⏳ 正在加载学习内容...</div>
+    <div v-else-if="error" class="status-msg error">⚠️ 加载失败：{{ error }}，使用默认内容</div>
+
+    <div v-if="!loading" class="section">
       <h3>📚 整体认读音节</h3>
       <div class="pinyin-cards">
         <div 
@@ -86,16 +89,82 @@ import { api } from '../utils/api'
 
 const authStore = useAuthStore()
 
-const wholePinyin = [
+const loading = ref(false)
+const error = ref(null)
+
+const defaultWholePinyin = [
   { pinyin: 'ye', example: '叶子', tones: ['yē', 'yé', 'yě', 'yè'] },
   { pinyin: 'yue', example: '月亮', tones: ['yuē', 'yué', 'yuě', 'yuè'] },
   { pinyin: 'yi', example: '一', tones: ['yī', 'yí', 'yǐ', 'yì'] },
   { pinyin: 'wu', example: '五', tones: ['wū', 'wú', 'wǔ', 'wù'] },
   { pinyin: 'yu', example: '鱼', tones: ['yū', 'yú', 'yǔ', 'yù'] }
 ]
+const defaultCompoundFinals = ['üe', 'ie', 'üan', 'ün', 'ing', 'ong', 'eng', 'ang']
+const defaultGameItems = [
+  { id: 1, pinyin: 'kě', char: '可' },
+  { id: 2, pinyin: 'yè', char: '叶' },
+  { id: 3, pinyin: 'dōng', char: '东' },
+  { id: 4, pinyin: 'xī', char: '西' },
+  { id: 5, pinyin: 'jiāng', char: '江' },
+  { id: 6, pinyin: 'nán', char: '南' }
+]
 
-const compoundFinals = ['üe', 'ie', 'üan', 'ün', 'ing', 'ong', 'eng', 'ang']
+const wholePinyin = ref([...defaultWholePinyin])
+const compoundFinals = ref([...defaultCompoundFinals])
 const selectedPinyin = ref('')
+
+const loadContent = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await api.get('/content/topics?category=pinyin&limit=1')
+    const topics = res.data?.topics || []
+    if (topics.length > 0) {
+      const topic = topics[0]
+      currentTopicId.value = topic.id
+      const content = topic.content || {}
+      if (Array.isArray(content.syllables) && content.syllables.length > 0) {
+        wholePinyin.value = content.syllables.map((s, idx) => ({
+          pinyin: s.pinyin || s.syllable || '',
+          example: s.example || s.word || '',
+          tones: Array.isArray(s.tones) ? s.tones : (s.tone ? [s.tone] : [])
+        })).filter(s => s.pinyin)
+      } else {
+        wholePinyin.value = [...defaultWholePinyin]
+      }
+      if (Array.isArray(content.finals) && content.finals.length > 0) {
+        compoundFinals.value = content.finals.map(f => f.final || f.pinyin || f).filter(Boolean)
+      } else if (Array.isArray(content.compoundFinals) && content.compoundFinals.length > 0) {
+        compoundFinals.value = content.compoundFinals.map(f => typeof f === 'string' ? f : (f.final || f.pinyin || '')).filter(Boolean)
+      } else {
+        compoundFinals.value = [...defaultCompoundFinals]
+      }
+      const exercises = content.exercises || content.matching || []
+      if (Array.isArray(exercises) && exercises.length > 0) {
+        gameItems.value = exercises.map((e, idx) => ({
+          id: e.id ?? idx + 1,
+          pinyin: e.pinyin || e.pronunciation || '',
+          char: e.char || e.character || e.hanzi || ''
+        })).filter(e => e.pinyin && e.char)
+      } else {
+        gameItems.value = [...defaultGameItems]
+      }
+    } else {
+      fallbackContent()
+    }
+  } catch (err) {
+    error.value = err.message
+    fallbackContent()
+  } finally {
+    loading.value = false
+  }
+}
+
+const fallbackContent = () => {
+  wholePinyin.value = [...defaultWholePinyin]
+  compoundFinals.value = [...defaultCompoundFinals]
+  gameItems.value = [...defaultGameItems]
+}
 
 const selectPinyin = (item) => {
   selectedPinyin.value = selectedPinyin.value === item.pinyin ? '' : item.pinyin
@@ -105,14 +174,7 @@ const playSound = (final) => {
   alert(`播放拼音: ${final}`)
 }
 
-const gameItems = ref([
-  { id: 1, pinyin: 'kě', char: '可' },
-  { id: 2, pinyin: 'yè', char: '叶' },
-  { id: 3, pinyin: 'dōng', char: '东' },
-  { id: 4, pinyin: 'xī', char: '西' },
-  { id: 5, pinyin: 'jiāng', char: '江' },
-  { id: 6, pinyin: 'nán', char: '南' }
-])
+const gameItems = ref([...defaultGameItems])
 
 const selectedPinyinGame = ref(null)
 const selectedChar = ref(null)
@@ -130,16 +192,20 @@ const progress = ref({
 onMounted(() => {
   const saved = localStorage.getItem('pinyin-practice-progress')
   if (saved) progress.value = JSON.parse(saved)
+  loadContent()
 })
+
+const currentTopicId = ref(2)
 
 const saveProgress = async () => {
   if (!authStore.currentStudent) return
   await api.post('/learning/records', {
-    student_id: authStore.currentStudent.id,
-    topic_type: 'pinyin',
-    topic_id: 'matching',
+    studentId: authStore.currentStudent.id,
+    topicId: currentTopicId.value,
+    activityType: 'game',
     score: gameItems.value.length,
-    duration: 0
+    durationSeconds: 0,
+    completed: true
   })
 }
 
@@ -173,11 +239,11 @@ const checkMatch = async () => {
         await saveProgress()
         for (const mistake of wrongMatches.value) {
           await api.post('/learning/mistakes', {
-            student_id: authStore.currentStudent.id,
-            topic_type: 'pinyin',
-            question: mistake.pinyin,
-            correct_answer: mistake.correctChar,
-            user_answer: mistake.wrongChar
+            studentId: authStore.currentStudent.id,
+            topicId: currentTopicId.value,
+            questionId: mistake.pinyin,
+            correctAnswer: mistake.correctChar,
+            wrongAnswer: mistake.wrongChar
           })
         }
       }
@@ -403,5 +469,16 @@ h3 {
 
 .reset-btn:hover {
   background: #764ba2;
+}
+
+.status-msg {
+  text-align: center;
+  padding: 20px;
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+}
+
+.status-msg.error {
+  color: var(--state-error);
 }
 </style>

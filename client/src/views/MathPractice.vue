@@ -2,7 +2,10 @@
   <div class="math-practice">
     <h2>🔢 数学练习 - 20以内应用题</h2>
 
-    <div class="progress-bar">
+    <div v-if="loading" class="status-msg">⏳ 正在加载学习内容...</div>
+    <div v-else-if="error" class="status-msg error">⚠️ 加载失败：{{ error }}，使用默认题目</div>
+
+    <div v-if="!loading" class="progress-bar">
       <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
       <span class="progress-text">完成进度: {{ progress.completed.length }}/{{ problems.length }}</span>
     </div>
@@ -58,7 +61,11 @@ import { api } from '../utils/api'
 
 const authStore = useAuthStore()
 
-const problems = ref([
+const problems = ref([])
+const loading = ref(false)
+const error = ref(null)
+
+const defaultProblems = [
   { id: 1, text: '小明有8个苹果，吃了3个，还剩几个？', answer: 5, type: '减法', keywords: ['吃了', '还剩'] },
   { id: 2, text: '树上有5只鸟，又飞来7只，一共有几只？', answer: 12, type: '加法', keywords: ['又飞来', '一共'] },
   { id: 3, text: '妈妈买了15个橘子，给了弟弟6个，妈妈还有几个？', answer: 9, type: '减法', keywords: ['给了', '还有'] },
@@ -66,7 +73,40 @@ const problems = ref([
   { id: 5, text: '停车场有12辆车，开走了4辆，还有几辆？', answer: 8, type: '减法', keywords: ['开走', '还有'] },
   { id: 6, text: '花园里有7朵红花，8朵黄花，一共有几朵花？', answer: 15, type: '加法', keywords: ['一共'] },
   { id: 7, text: '小明今年6岁，爸爸今年32岁，爸爸比小明大几岁？', answer: 26, type: '求相差', keywords: ['比', '大几'] }
-])
+]
+
+const loadContent = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await api.get('/content/topics?category=math&limit=1')
+    const topics = res.data?.topics || []
+    if (topics.length > 0) {
+      const topic = topics[0]
+      currentTopicId.value = topic.id
+      const content = topic.content || {}
+      const qs = (content.questions || []).map((q, idx) => ({
+        id: q.id ?? idx + 1,
+        text: q.text || q.problem || '',
+        answer: Number(q.answer ?? q.result ?? 0),
+        type: q.type || '数学',
+        keywords: Array.isArray(q.keywords) ? q.keywords : []
+      }))
+      if (qs.length > 0) {
+        problems.value = qs
+      } else {
+        problems.value = defaultProblems
+      }
+    } else {
+      problems.value = defaultProblems
+    }
+  } catch (err) {
+    error.value = err.message
+    problems.value = defaultProblems
+  } finally {
+    loading.value = false
+  }
+}
 
 const currentIndex = ref(0)
 const userAnswer = ref('')
@@ -83,16 +123,20 @@ const progress = ref({
 onMounted(() => {
   const saved = localStorage.getItem('math-practice-progress')
   if (saved) progress.value = JSON.parse(saved)
+  loadContent()
 })
+
+const currentTopicId = ref(3)
 
 const saveProgress = async () => {
   if (!authStore.currentStudent) return
   await api.post('/learning/records', {
-    student_id: authStore.currentStudent.id,
-    topic_type: 'math',
-    topic_id: 'word_problems',
+    studentId: authStore.currentStudent.id,
+    topicId: currentTopicId.value,
+    activityType: 'practice',
     score: score.value,
-    duration: 0
+    durationSeconds: 0,
+    completed: true
   })
 }
 
@@ -125,11 +169,11 @@ const checkAnswer = async () => {
     wrongCount.value++
     feedback.value = { correct: false, message: `❌ 答案是 ${currentProblem.value.answer}` }
     await api.post('/learning/mistakes', {
-      student_id: authStore.currentStudent.id,
-      topic_type: 'math',
-      question: currentProblem.value.text,
-      correct_answer: String(currentProblem.value.answer),
-      user_answer: String(userAnswer.value)
+      studentId: authStore.currentStudent.id,
+      topicId: currentTopicId.value,
+      questionId: String(currentProblem.value.id),
+      correctAnswer: String(currentProblem.value.answer),
+      wrongAnswer: String(userAnswer.value)
     })
   }
 
@@ -316,5 +360,16 @@ h2 {
 .wrong-detail {
   font-size: 0.9rem;
   color: #636e72;
+}
+
+.status-msg {
+  text-align: center;
+  padding: 20px;
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+}
+
+.status-msg.error {
+  color: var(--state-error);
 }
 </style>
