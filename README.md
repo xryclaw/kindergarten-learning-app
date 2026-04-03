@@ -62,6 +62,31 @@ npm run server:bootstrap
 
 如果你想从公网直接访问，还需要在腾讯云控制台的安全组里放行 `TCP 80`。
 
+### 启用 HTTPS
+
+对于裸 IP 部署，项目内置了 `certbot` 的 IP 证书流程：
+
+```bash
+npm run server:https
+```
+
+这个脚本会：
+
+1. 安装 `snapd` 和最新 `certbot`
+2. 用 `http-01` + `webroot` 方式给 `DEPLOY_HOST` 申请 Let’s Encrypt IP 证书
+3. 写入 `443` 的 `nginx` 配置
+4. 把 `80` 强制跳转到 `https`
+
+建议先在 `.env.deploy.local` 配上邮箱：
+
+```bash
+DEPLOY_CERTBOT_EMAIL=you@example.com
+```
+
+如果公网要访问 HTTPS，还需要在腾讯云安全组放行：
+
+- `TCP 443`
+
 ### 手动部署
 
 ```bash

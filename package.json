@@ -8,7 +8,8 @@
     "preview": "vite preview",
     "test": "node --test",
     "deploy": "node ./scripts/deploy.mjs",
-    "server:bootstrap": "bash ./scripts/bootstrap-server.sh"
+    "server:bootstrap": "bash ./scripts/bootstrap-server.sh",
+    "server:https": "bash ./scripts/enable-https.sh"
   },
   "dependencies": {
     "vue": "^3.4.0",
