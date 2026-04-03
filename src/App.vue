@@ -25,6 +25,7 @@
     
     <footer class="footer">
       <p>📚 今日学习：汉字 + 拼音 | 加油！💪</p>
+      <p class="build-meta" :title="buildTime">版本 {{ buildVersion }}</p>
     </footer>
   </div>
 </template>
@@ -44,6 +45,9 @@ const tabs = [
   { id: 'quiz', name: '互动测验', icon: '🎯' },
   { id: 'cards', name: '学习卡片', icon: '🎴' }
 ]
+
+const buildVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'
+const buildTime = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : ''
 </script>
 
 <style scoped>
@@ -117,6 +121,13 @@ const tabs = [
   color: white;
   padding: 20px;
   font-size: 1.1rem;
+}
+
+.build-meta {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
 }
 
 @media (max-width: 768px) {
