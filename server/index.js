@@ -1,7 +1,9 @@
 import { createApp } from './src/app.js';
 import { initDatabase } from './src/db/index.js';
+import { runSeed } from './src/db/seed.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { mkdirSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -12,9 +14,16 @@ const DB_PATH = process.env.DB_PATH || join(__dirname, '../data/app.db');
 
 async function start() {
   try {
+    // 确保数据库目录存在
+    const dbDir = dirname(DB_PATH);
+    mkdirSync(dbDir, { recursive: true });
+
     // 初始化数据库
     console.log(`Initializing database at: ${DB_PATH}`);
     initDatabase(DB_PATH);
+
+    // Seed 默认数据
+    runSeed();
 
     // 创建并启动服务器
     const app = await createApp();
