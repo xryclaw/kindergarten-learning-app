@@ -93,35 +93,15 @@ const lessons = ref([
 ])
 
 const currentLesson = ref(null)
-const scratchTopics = ref([])
 
 const progress = ref({
   completed: [],
   scores: []
 })
 
-onMounted(async () => {
+onMounted(() => {
   const saved = localStorage.getItem('scratch-module-progress')
   if (saved) progress.value = JSON.parse(saved)
-
-  try {
-    const result = await api.get('/content/topics?category=scratch&isActive=true&limit=100')
-    if (result.success && result.data.topics.length > 0) {
-      scratchTopics.value = result.data.topics
-      const loadedLessons = result.data.topics.map(topic => ({
-        id: topic.id,
-        icon: topic.content?.icon || '🐱',
-        title: topic.title,
-        description: topic.content?.description || '',
-        steps: topic.content?.steps || []
-      }))
-      if (loadedLessons.length > 0) {
-        lessons.value = loadedLessons
-      }
-    }
-  } catch (err) {
-    console.error('Failed to load scratch topics:', err)
-  }
 })
 
 const saveProgress = () => {
@@ -139,7 +119,7 @@ const completeLesson = async () => {
       studentId: authStore.currentStudent.id,
       topicId: currentLesson.value.id,
       activityType: 'practice',
-      score: 100,
+      score: 1,
       durationSeconds: 0,
       completed: true
     })

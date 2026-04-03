@@ -86,7 +86,6 @@ const showQuiz = ref(false)
 const currentQuestionIndex = ref(0)
 const quizFeedback = ref(null)
 const score = ref(0)
-const storyTopics = ref([])
 
 const progress = ref({
   completed: [],
@@ -94,28 +93,9 @@ const progress = ref({
   wrongAnswers: []
 })
 
-onMounted(async () => {
+onMounted(() => {
   const saved = localStorage.getItem('story-module-progress')
   if (saved) progress.value = JSON.parse(saved)
-
-  try {
-    const result = await api.get('/content/topics?category=story&isActive=true&limit=100')
-    if (result.success && result.data.topics.length > 0) {
-      storyTopics.value = result.data.topics
-      const loadedStories = result.data.topics.map((topic, idx) => ({
-        id: topic.id,
-        title: topic.title,
-        content: topic.content?.content || [],
-        questions: topic.content?.questions || []
-      }))
-      if (loadedStories.length > 0) {
-        stories.value = loadedStories
-        currentStory.value = stories.value[0]
-      }
-    }
-  } catch (err) {
-    console.error('Failed to load story topics:', err)
-  }
 })
 
 const saveProgress = () => {
@@ -148,9 +128,9 @@ const answerQuestion = async (option) => {
     await api.post('/learning/mistakes', {
       studentId: authStore.currentStudent.id,
       topicId: currentStory.value.id,
-      questionId: String(currentQuestionIndex.value + 1),
-      wrongAnswer: option,
-      correctAnswer: currentQuestion.value.answer
+      questionId: currentQuestion.value.question,
+      correctAnswer: currentQuestion.value.answer,
+      wrongAnswer: option
     })
   }
 
@@ -167,7 +147,7 @@ const answerQuestion = async (option) => {
         studentId: authStore.currentStudent.id,
         topicId: currentStory.value.id,
         activityType: 'quiz',
-        score: Math.round((score.value / currentStory.value.questions.length) * 100),
+        score: score.value,
         durationSeconds: 0,
         completed: true
       })

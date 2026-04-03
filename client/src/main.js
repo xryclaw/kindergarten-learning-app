@@ -1,6 +1,7 @@
 import { createApp, h } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHistory, RouterView } from 'vue-router'
+import './styles/vars.css'
 import App from './App.vue'
 import Login from './views/Login.vue'
 import { useAuthStore } from './stores/auth'

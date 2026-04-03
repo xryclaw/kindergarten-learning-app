@@ -33,3 +33,6 @@ pnpm-debug.log*
 .env.*.local
 .env.deploy.local
 .vercel
+
+# SpectrAI worktree isolation
+.spectrai-worktrees/
