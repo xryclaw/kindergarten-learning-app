@@ -16,10 +16,85 @@
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
     }
+    .app-shell {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .app-shell-card {
+      width: min(92vw, 560px);
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 24px;
+      padding: 32px 24px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(36, 23, 74, 0.18);
+      color: #43346b;
+    }
+    .app-shell-title {
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      margin-bottom: 12px;
+    }
+    .app-shell-text {
+      font-size: 1rem;
+      line-height: 1.7;
+    }
+    .app-shell-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin: 0 4px;
+      border-radius: 50%;
+      background: #ffd93d;
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+    .app-shell-dot:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+    .app-shell-dot:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+    .app-shell-note {
+      margin-top: 14px;
+      font-size: 0.92rem;
+      color: #6f6296;
+    }
+    @keyframes pulse {
+      0%, 80%, 100% {
+        transform: scale(0.7);
+        opacity: 0.6;
+      }
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
   </style>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <div class="app-shell">
+      <div class="app-shell-card">
+        <div class="app-shell-title">幼儿园学习乐园</div>
+        <p class="app-shell-text">
+          正在加载幼儿园学习乐园
+          <span class="app-shell-dot"></span>
+          <span class="app-shell-dot"></span>
+          <span class="app-shell-dot"></span>
+        </p>
+        <p class="app-shell-note">如果长时间没有进入页面，请刷新一次。</p>
+      </div>
+    </div>
+  </div>
+  <noscript>
+    <div class="app-shell">
+      <div class="app-shell-card">
+        <div class="app-shell-title">需要启用 JavaScript</div>
+        <p class="app-shell-text">这个学习应用依赖 JavaScript 运行，请开启浏览器脚本后再访问。</p>
+      </div>
+    </div>
+  </noscript>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
